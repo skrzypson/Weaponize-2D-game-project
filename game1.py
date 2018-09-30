@@ -42,8 +42,8 @@ class UserShot(pygame.sprite.Sprite):
         print(math.cos(user_angle))
         print(math.sin(user_angle))
         self.shot_speed_value = shot_speed_value
-        self.speedx = self.shot_speed_value * math.cos(math.radians(user_angle))*30
-        self.speedy = -(self.shot_speed_value * math.sin(math.radians(user_angle)))*30
+        self.speedx = round(self.shot_speed_value * math.cos(math.radians(user_angle))*30, 4)
+        self.speedy = - round(self.shot_speed_value * math.sin(math.radians(user_angle))*30, 4)
         all_sprites.add(self)
         print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
         print("speedx = " + str(self.speedx) + ", speedy = " + str(self.speedy) + ", angle = " + str(user_angle))
@@ -122,7 +122,7 @@ class User(pygame.sprite.Sprite):
 
         if event.type == keyup_keystate:
             if event.key == pygame.K_KP5:
-                time_delta = 0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000
+                time_delta = round(0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000, 4)
                 self.shot_speed_value = min(time_delta, 3)
                 print("get ticks: " + str(pygame.time.get_ticks()/1000) + ", init time:  " + str(self.shot_initialize_time/1000))
                 UserShot(self.rect.centerx, self.rect.centery, self.angle, self.shot_speed_value)
@@ -147,10 +147,6 @@ class User(pygame.sprite.Sprite):
         """rotate an image while keeping its center"""
         self.image = pygame.transform.rotate(self.image_original, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
-
-
-
-
 
 all_sprites = pygame.sprite.Group()
 user1 = User()
