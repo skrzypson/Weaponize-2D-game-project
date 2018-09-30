@@ -37,14 +37,16 @@ class UserShot(pygame.sprite.Sprite):
         self.image_original.set_colorkey((255,255,255))
         self.image = pygame.transform.rotate(self.image_original, user_angle)
         self.rect = self.image.get_rect()
-        self.rect.centerx = user_centerx_coordinate + math.cos(user_angle)*30
-        self.rect.centery = user_centery_coordinate + math.sin(user_angle)*30
+        self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*30
+        self.rect.centery = user_centery_coordinate - math.sin(math.radians(user_angle))*30
+        print(math.cos(user_angle))
+        print(math.sin(user_angle))
         self.shot_speed_value = shot_speed_value
-        self.speedx = self.shot_speed_value * math.cos(user_angle)
-        self.speedy = self.shot_speed_value * math.sin(user_angle)
+        self.speedx = self.shot_speed_value * math.cos(math.radians(user_angle))*30
+        self.speedy = -(self.shot_speed_value * math.sin(math.radians(user_angle)))*30
         all_sprites.add(self)
-        #print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
-        print("speedx = " + str(self.speedx) + ", speedy = " + str(self.speedy))
+        print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
+        print("speedx = " + str(self.speedx) + ", speedy = " + str(self.speedy) + ", angle = " + str(user_angle))
 
     def update(self):
 
@@ -72,21 +74,14 @@ class User(pygame.sprite.Sprite):
         self.speedy = 0
         self.angle = 0
 
-        # pygame.sprite.Sprite.__init__(self)
-        # self.image = pygame.Surface((50, 40))
-        # self.image.fill((30,30,30))
-        # self.rect = self.image.get_rect()
-        # self.rect.centerx = width / 2
-        # self.rect.bottom = height - 10
-        # self.speedx = 0
-
     def update(self):
 
         self.speedx = 0
         self.speedy = 0
 
         pressed_keystate = pygame.key.get_pressed()
-        released_keystate = pygame.KEYUP
+        keyup_keystate = pygame.KEYUP
+        keydown_keystate = pygame.KEYDOWN
 
         if pressed_keystate[pygame.K_a]:
 
@@ -118,16 +113,22 @@ class User(pygame.sprite.Sprite):
             self.rot_center(self.angle)
             print("q pressed, angle = " + str(self.angle))
 
-        if pressed_keystate[pygame.K_KP5]:
-            self.shot_initialize_time = pygame.time.get_ticks()
-
-        if event.type == released_keystate:
+        if event.type == keydown_keystate:
             if event.key == pygame.K_KP5:
-                self.shot_speed_value = min((pygame.time.get_ticks() - self.shot_initialize_time)/5, 15)
+                self.shot_initialize_time = pygame.time.get_ticks()
+                empty_event = pygame.event.Event(pygame.USEREVENT)
+                pygame.event.post(empty_event)
+                print("init time: " + str(self.shot_initialize_time))
+
+        if event.type == keyup_keystate:
+            if event.key == pygame.K_KP5:
+                time_delta = 0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000
+                self.shot_speed_value = min(time_delta, 3)
+                print("get ticks: " + str(pygame.time.get_ticks()/1000) + ", init time:  " + str(self.shot_initialize_time/1000))
                 UserShot(self.rect.centerx, self.rect.centery, self.angle, self.shot_speed_value)
                 empty_event = pygame.event.Event(pygame.USEREVENT)
                 pygame.event.post(empty_event)
-                #print("speed: " + str(self.shot_speed_value))
+                print("speed: " + str(self.shot_speed_value))
 
 
         self.rect.x += self.speedx
@@ -160,8 +161,6 @@ while True:
     clock.tick(fps)
 
     for event in pygame.event.get():
-
-        print(event)
 
         if event.type == pygame.QUIT:
             pygame.quit()
