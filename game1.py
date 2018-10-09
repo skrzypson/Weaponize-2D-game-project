@@ -1,5 +1,6 @@
 import sys, pygame
 import math
+from random import randint
 
 #unchangeable dimensions of window
 size = width, height = 1000, 500
@@ -27,6 +28,38 @@ mov_increment = 0
 #set clock
 clock = pygame.time.Clock()
 
+class ElementalEntities(pygame.sprite.Sprite):
+
+    elemental_entity_details_array = []
+
+    def __init__(self, init_coord_x=100, init_coord_y=100, init_color=(100,100,100)):
+
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((3,3))
+        self.rect = self.image.get_rect()
+        self.rect.centerx = init_coord_x
+        self.rect.centery = init_coord_y
+        self.image.fill((init_color[0],init_color[1],init_color[2]))
+        ElementalEntities.elemental_entity_details_array.append({"x coordinate" : self.rect.centerx, "y coordinate" : self.rect.centery, "color" : init_color})
+        all_sprites.add(self)
+
+
+    def update(self):
+
+        self.rect.centerx += ElementalEntities.random_movement_generator()
+        self.rect.centery += ElementalEntities.random_movement_generator()
+
+        if self.rect.right > width:
+            self.rect.right = width
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.bottom > height:
+            self.rect.bottom = height
+        if self.rect.top < 0:
+            self.rect.top = 0
+
+    def random_movement_generator():
+        return randint(-1, 1)
 
 class UserShot(pygame.sprite.Sprite):
 
@@ -150,7 +183,9 @@ class User(pygame.sprite.Sprite):
 
 all_sprites = pygame.sprite.Group()
 user1 = User()
-all_sprites.add(user1)
+el1 = ElementalEntities(200,200,(25,125,225))
+el2 = ElementalEntities()
+all_sprites.add(user1, el1, el2)
 
 while True:
 
