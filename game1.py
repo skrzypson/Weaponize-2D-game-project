@@ -4,8 +4,6 @@ from random import randint
 
 #unchangeable dimensions of window
 size = width, height = 1000, 500
-
-#set frames per second
 fps = 30
 
 #initiate screen
@@ -19,8 +17,8 @@ pygame.display.set_caption("Weaponize")
 background_image = pygame.image.load("img.png").convert()
 
 #sprite images
-user_image = pygame.image.load("user.png").convert()
-user_shot_image = pygame.image.load("shot.png").convert()
+user_image = pygame.image.load("user2.png").convert()
+user_shot_image = pygame.image.load("shot.png").convert_alpha()
 
 #initiate length travelled
 mov_increment = 0
@@ -35,14 +33,14 @@ class ElementalEntities(pygame.sprite.Sprite):
     def __init__(self, init_coord_x=100, init_coord_y=100, init_color=(100,100,100)):
 
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((3,3))
+        self.image = pygame.Surface((3,3)).convert_alpha()
         self.rect = self.image.get_rect()
         self.rect.centerx = init_coord_x
         self.rect.centery = init_coord_y
         self.image.fill((init_color[0],init_color[1],init_color[2]))
+        self.mask = pygame.mask.from_surface(self.image)
         ElementalEntities.elemental_entity_details_array.append({"x coordinate" : self.rect.centerx, "y coordinate" : self.rect.centery, "color" : init_color})
-        all_sprites.add(self)
-
+        all_elementals.add(self)
 
     def update(self):
 
@@ -58,6 +56,8 @@ class ElementalEntities(pygame.sprite.Sprite):
         if self.rect.top < 0:
             self.rect.top = 0
 
+        self.mask = pygame.mask.from_surface(self.image)
+
     def random_movement_generator():
         return randint(-1, 1)
 
@@ -69,6 +69,7 @@ class UserShot(pygame.sprite.Sprite):
         self.image_original = user_shot_image
         self.image_original.set_colorkey((255,255,255))
         self.image = pygame.transform.rotate(self.image_original, user_angle)
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*30
         self.rect.centery = user_centery_coordinate - math.sin(math.radians(user_angle))*30
@@ -77,7 +78,7 @@ class UserShot(pygame.sprite.Sprite):
         self.shot_speed_value = shot_speed_value
         self.speedx = round(self.shot_speed_value * math.cos(math.radians(user_angle))*30, 4)
         self.speedy = - round(self.shot_speed_value * math.sin(math.radians(user_angle))*30, 4)
-        all_sprites.add(self)
+        all_bullets.add(self)
         print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
         print("speedx = " + str(self.speedx) + ", speedy = " + str(self.speedy) + ", angle = " + str(user_angle))
 
@@ -87,9 +88,11 @@ class UserShot(pygame.sprite.Sprite):
         self.rect.y += self.speedy
         #print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
 
+        self.mask = pygame.mask.from_surface(self.image)
+
         if self.rect.centerx > width or self.rect.centerx < 0 or self.rect.centery > height or self.rect.centery < 0:
             #print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
-            all_sprites.remove(self)
+            all_bullets.remove(self)
             self = None
             print("shot is dead")
 
@@ -100,12 +103,14 @@ class User(pygame.sprite.Sprite):
         self.image_original = user_image
         self.image_original.set_colorkey((255, 255, 255))
         self.image = self.image_original.copy()
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = width / 2
         self.rect.bottom = height - 30
         self.speedx = 0
         self.speedy = 0
         self.angle = 0
+        self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
 
@@ -180,12 +185,17 @@ class User(pygame.sprite.Sprite):
         """rotate an image while keeping its center"""
         self.image = pygame.transform.rotate(self.image_original, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
+        self.mask = pygame.mask.from_surface(self.image)
 
 all_sprites = pygame.sprite.Group()
+all_bullets = pygame.sprite.Group()
+all_elementals = pygame.sprite.Group()
+
 user1 = User()
 el1 = ElementalEntities(200,200,(25,125,225))
 el2 = ElementalEntities()
-all_sprites.add(user1, el1, el2)
+
+all_sprites.add(user1)#, el1, el2)
 
 while True:
 
@@ -198,7 +208,18 @@ while True:
             sys.exit()
 
     all_sprites.update()
+    all_bullets.update()
+    all_elementals.update()
+
+    hits = pygame.sprite.groupcollide(all_elementals, all_bullets, True, False, pygame.sprite.collide_mask)
+    if pygame.sprite.spritecollide(user1, all_elementals, False, pygame.sprite.collide_mask):
+        print("fudge")
+    # if hits == True:
+    #     print("BAM")
+
     screen.blit(background_image, [0,0])
     all_sprites.draw(screen)
+    all_bullets.draw(screen)
+    all_elementals.draw(screen)
 
     pygame.display.flip()
