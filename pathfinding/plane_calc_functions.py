@@ -19,6 +19,7 @@ def get_neighbors(node, top_left_coord, bottom_right_coord):
     children = []
 
     for increment in neighbors:
+
         child = tuple(map(operator.add, node, increment))
 
         if any(coord < 0 for coord in tuple(map(operator.sub, child, top_left_coord))) or any(coord < 0 for coord in tuple(map(operator.sub, bottom_right_coord, child))) :

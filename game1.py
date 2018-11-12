@@ -2,6 +2,7 @@ import sys, pygame
 import math
 from random import randint
 
+
 #unchangeable dimensions of window
 size = width, height = 1000, 500
 fps = 30

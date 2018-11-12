@@ -28,7 +28,7 @@ class plane:
 
     def __init__ (self, bottom_right_point):
 
-        node=0
+        node = 0
         self.plane = dict()
        
         for j in range(bottom_right_point[1]+1):
@@ -44,7 +44,7 @@ start_to_end_path = plane_calc_functions.calculate_path(start_point, end_point, 
 print("start to end path: " + str(start_to_end_path))
 
 end_to_start_path = plane_calc_functions.calculate_path(end_point, start_point, top_left_point, bottom_right_point, base_plane, closedset)
-print("end to start path: " + str(end_to_start_path))
+print("end to start path: " + str(end_to_start_path[::-1]))
 
 print("\n")
 
