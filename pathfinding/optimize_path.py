@@ -184,9 +184,10 @@ def create_optimal_paths(common_nodes_list, paths_list, path_comparison_pair_lis
 
     return optimal_path_list
 
+
 def cut_extra_sections(path):
 
-    reduced_path = path
+    reduced_path = path.copy()
     extra_nodes = []
 
     for index, node in enumerate(path):
@@ -199,13 +200,14 @@ def cut_extra_sections(path):
 
                 rp_index = path.index(rp_node)
 
-                if abs(rp_index - index) > 1 and assess_path_consistency([node, rp_node]):
+                if rp_index - index > 1 and assess_path_consistency([node, rp_node]):
 
                     extra_section = [path[extra_node] for extra_node in range(index + 1, rp_index)]
                     extra_section_len = round(sum(calc_path_distances(extra_section)),2)
                     extra_nodes.append((extra_section_len, extra_section))
 
     return extra_nodes
+
 
 p = [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 4), (6, 5), (7, 5), (8, 6), (9, 6), (10, 6), (11, 7), (12, 7),
      (13, 8), (14, 8), (14, 9), (14, 10), (14, 11), (13, 9), (14, 7), (13, 10), (13, 11), (14, 6), (13, 7), (15, 5),

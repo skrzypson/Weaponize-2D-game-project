@@ -1,5 +1,5 @@
 import unittest
-from pathfinding import path_optimization
+from pathfinding import optimize_path
 
 
 class GameTests(unittest.TestCase):
@@ -18,15 +18,15 @@ class GameTests(unittest.TestCase):
 
     def test_return_path_index_combinations(self):
 
-        result = path_optimization.return_path_index_combinations(self.path_0, self.path_1, self.path_2)
+        result = optimize_path.return_path_index_combinations(self.path_0, self.path_1, self.path_2)
 
         self.assertListEqual(result, [(0,1), (0,2), (1,2)])
 
     def test_calc_path_distances(self):
 
-        result_0 = sum(path_optimization.calc_path_distances(self.path_0))
-        result_1 = sum(path_optimization.calc_path_distances(self.path_1))
-        result_2 = sum(path_optimization.calc_path_distances(self.path_2))
+        result_0 = sum(optimize_path.calc_path_distances(self.path_0))
+        result_1 = sum(optimize_path.calc_path_distances(self.path_1))
+        result_2 = sum(optimize_path.calc_path_distances(self.path_2))
 
         self.assertEqual(result_0, 13.05)
         self.assertEqual(result_1, 14.46)
@@ -34,12 +34,12 @@ class GameTests(unittest.TestCase):
 
     def test_assess_path_consistency(self):
 
-        result_0 = path_optimization.assess_path_consistency(self.path_0)
-        result_1 = path_optimization.assess_path_consistency(self.path_1)
-        result_2 = path_optimization.assess_path_consistency(self.path_2)
-        result_3 = path_optimization.assess_path_consistency(self.path_3)
-        result_4 = path_optimization.assess_path_consistency(self.path_4)
-        result_5 = path_optimization.assess_path_consistency(self.path_5)
+        result_0 = optimize_path.assess_path_consistency(self.path_0)
+        result_1 = optimize_path.assess_path_consistency(self.path_1)
+        result_2 = optimize_path.assess_path_consistency(self.path_2)
+        result_3 = optimize_path.assess_path_consistency(self.path_3)
+        result_4 = optimize_path.assess_path_consistency(self.path_4)
+        result_5 = optimize_path.assess_path_consistency(self.path_5)
 
         self.assertTrue(result_0, True)
         self.assertTrue(result_1, True)

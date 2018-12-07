@@ -1,13 +1,18 @@
 import math
 import operator
 import time
-import plane_calc_functions
+from pathfinding import plane_calc_functions
 
 # definition of plane extents
 top_left_point = (0, 0)
 bottom_right_point = (20, 15)
 
 closedset = {}
+closedset.update({(13, 3): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
+closedset.update({(14, 3): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
+closedset.update({(15, 3): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
+closedset.update({(15, 4): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
+closedset.update({(15, 5): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
 closedset.update({(15, 6): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
 closedset.update({(15, 7): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
 closedset.update({(15, 8): {"node": None, "parent": None, "g": None, "h": None, "f": None}})
@@ -25,21 +30,22 @@ start_point = (0, 0)
 end_point = (18, 10)
 
 
-class plane:
+class Plane:
 
-    def __init__(self, bottom_right_point):
+    def __init__(self, _bottom_right_point):
 
-        node = 0
+        node_no = 0
         self.plane = dict()
 
-        for j in range(bottom_right_point[1] + 1):
+        for j in range(_bottom_right_point[1] + 1):
 
-            for i in range(bottom_right_point[0] + 1):
-                self.plane.update({(i, j): {"node": node, "parent": None, "g": None, "h": None, "f": None}})
-                node += 1
+            for i in range(_bottom_right_point[0] + 1):
+
+                self.plane.update({(i, j): {"node_no": node_no, "parent": None, "g": None, "h": None, "f": None}})
+                node_no += 1
 
 
-base_plane = plane(bottom_right_point)
+base_plane = Plane(bottom_right_point)
 
 start_to_end_path = plane_calc_functions.calculate_path(start_point, end_point, top_left_point, bottom_right_point,
                                                         base_plane, closedset)
