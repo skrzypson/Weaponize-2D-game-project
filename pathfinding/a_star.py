@@ -26,10 +26,11 @@ enclosing_wall = {(19,0), (19,1), (20,1), (21,1), (21,0)}
 
 class PathGenerator:
 
-    def __init__(self, top_left_coord : Tuple[int, int], bottom_right_coord : Tuple[int, int]):
+    def __init__(self, top_left_coord : Tuple[int, int], bottom_right_coord : Tuple[int, int], sprite_id: str):
 
         self.top_left_coord = top_left_coord
         self.bottom_right_coord = bottom_right_coord
+        self.sprite_id = sprite_id
 
     neighbors_increment = {(1, 0), (0, 1), (0, -1), (-1, 0)}
     neighbors_increment_diag = {(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)}
@@ -166,7 +167,7 @@ class PathGenerator:
         return lowest_node
 
     def aStar(self, _start_node: Tuple[int, int], _goal_node: Tuple[int, int], _wall_nodes: Set[Tuple[int, int]],
-              result_array=None) -> Deque[Tuple[int, int]]:
+              _is_iterable=False, result_array=None) -> Deque[Tuple[int, int]]:
 
         start_time = time.time()
         path_not_found = True
@@ -190,9 +191,15 @@ class PathGenerator:
                 
                 if result_array != None:
 
-                    result_array.append(path)
+                    result_array[self.sprite_id]['path'] = path
 
-                return path
+                if _is_iterable:
+
+                    return iter(list(path))
+
+                elif not _is_iterable:
+
+                    return path
 
             open_set.remove(current)
             closed_set.add(current)

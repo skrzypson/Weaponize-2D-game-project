@@ -1,6 +1,7 @@
 import sys, pygame
 import math
 import operator
+import threading
 from random import randint
 from typing import Tuple, Set
 from pathfinding import a_star
@@ -30,6 +31,7 @@ mov_increment = 0
 #set clock
 clock = pygame.time.Clock()
 
+
 class Obstacle(pygame.sprite.Sprite):
 
     obstacles = set()
@@ -45,7 +47,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.outline = self.mask.outline()
         self.adjusted_outline = [tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline]
-        Obstacle.obstacles.update(self.adjusted_outline)aa
+        Obstacle.obstacles.update(self.adjusted_outline)
         print(Obstacle.obstacles)
         all_wall_sprites.add(self)
 
@@ -53,32 +55,35 @@ class Obstacle(pygame.sprite.Sprite):
 class ElementalEntities(pygame.sprite.Sprite):
 
     sprite_id = 0
-    elemental_entity_details_array = []
+    elemental_entity_details_array = dict()
+    path_threads_list = []
 
     def __init__(self, init_coord_x=100, init_coord_y=100, init_color=(100,100,100)):
 
         pygame.sprite.Sprite.__init__(self)
 
-        self.path_generator = a_star.PathGenerator((0,0), (width, height))
+        self.sprite_id = ElementalEntities.sprite_id
+        self.path_generator = a_star.PathGenerator((0, 0), (width, height), self.sprite_id)
         self.path = None
         self.frames_past = 0
 
-        self.sprite_id = ElementalEntities.sprite_id
         self.image = pygame.Surface((3,3)).convert_alpha()
         self.rect = self.image.get_rect()
         self.rect.centerx = init_coord_x
         self.rect.centery = init_coord_y
         self.image.fill((init_color[0],init_color[1],init_color[2]))
-        ####
-        #self.mask = pygame.mask.from_surface(self.image)
-        #print("mask: " + str((self.mask).outline()))
-        #input("click pls")
-        ####
-        ElementalEntities.elemental_entity_details_array.append(
 
-            {self.sprite_id: (self.rect.centerx, self.rect.centery)}
+        self.path_generator_thread = threading.Thread()
 
+        ElementalEntities.elemental_entity_details_array.update(
+            {self.sprite_id : {'path' : None, 'current_location' : (self.rect.centerx, self.rect.centery)}}
         )
+
+        # ElementalEntities.elemental_entity_details_array.append(
+        #
+        #     {self.sprite_id: (self.rect.centerx, self.rect.centery)}
+        #
+        # )
 
         ElementalEntities.sprite_id += 1
         all_elementals.add(self)
@@ -88,16 +93,37 @@ class ElementalEntities(pygame.sprite.Sprite):
         next_x = 0
         next_y = 0
 
-        if self.player_in_vicinity() and (self.frames_past > fps-1 or self.path is None):
+        if self.path_generator_thread.isAlive():
 
-            print("player in vicinity, new path being calculated")
-            self.path = iter(list(self.path_generator.aStar((self.rect.centerx, self.rect.centery)
-                                                            , User.get_player_location(), Obstacle.obstacles))[1:])
+            return
+
+        elif self.frames_past == -1 and not self.path_generator_thread.isAlive():
+
+            self.path = iter(list(ElementalEntities.elemental_entity_details_array[self.sprite_id]['path']))
+
             if self.path != 0:
 
-                next_x, next_y = tuple(map(operator.sub, next(self.path), (self.rect.centerx, self.rect.centery)))
+                #next_x, next_y = tuple(map(operator.sub, next(self.path), (self.rect.centerx, self.rect.centery)))
                 self.frames_past = 0
-                print(next_x, next_y)
+                #print(next_x, next_y)
+
+        elif self.player_in_vicinity() and (self.frames_past > fps-1 or self.path is None) \
+                and not self.path_generator_thread.isAlive():
+
+            #print("player in vicinity, new path being calculated")
+            self.path_generator_thread = threading.Thread(target=self.path_generator.aStar
+                                                          , name=(str(self.sprite_id) + '_path_gen_thread')
+                                                          , args=((self.rect.centerx, self.rect.centery)
+                                                                  , User.get_player_location()
+                                                                  , Obstacle.obstacles
+                                                                  , True
+                                                                  , ElementalEntities.elemental_entity_details_array
+                                                                  )
+                                                          )
+
+            self.path_generator_thread.start()
+            self.frames_past = -1
+            #print('sprite ' + str(self.sprite_id) + ' is alive - ' + str(self.path_generator_thread.isAlive()))
 
         elif self.player_in_vicinity() and self.frames_past < fps:
 
@@ -121,7 +147,7 @@ class ElementalEntities(pygame.sprite.Sprite):
 
         self.check_bounds()
 
-        ElementalEntities.elemental_entity_details_array[self.sprite_id] = (self.rect.centerx, self.rect.centery)
+        ElementalEntities.elemental_entity_details_array[self.sprite_id]['current_location'] = (self.rect.centerx, self.rect.centery)
 
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -327,6 +353,25 @@ all_sprites.add(user1)#, el1, el2)
 
 
 wall1 = Obstacle((350,350), (370, 370))
+
+# def thread_update(update_function):
+#
+#     while True:
+#
+#         update_function()
+#
+# all_sprites_update_thread = threading.Thread(target=thread_update,name='all_sprites_update_thread',
+#                                              args=all_sprites.update)
+# all_bullets_update_thread = threading.Thread(target=thread_update, name='all_bullets_update_thread',
+#                                              args=all_bullets.update)
+# all_elementals_update_thread = threading.Thread(target=thread_update, name='all_elementals_update_thread',
+#                                              args=all_elementals.update)
+#
+# threads = [all_sprites_update_thread, all_bullets_update_thread, all_elementals_update_thread]
+#
+# for thread in threads:
+#
+#     thread.start()
 
 while True:
 
