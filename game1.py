@@ -7,11 +7,6 @@ from typing import Tuple, Set
 from pathfinding import a_star
 from collections import deque
 
-# import os
-# import psutil
-
-
-
 #unchangeable dimensions of window
 size = width, height = 1000, 500
 fps = 30
@@ -26,11 +21,12 @@ pygame.display.set_caption("Weaponize")
 #set background
 #background_image = pygame.image.load("img.png").convert()
 background_image = pygame.Surface((width, height))
-background_image.fill((255,255,255))
+background_image.fill((250,255,170))
 
 #sprite images
-user_image = pygame.image.load("user2.png").convert()
-user_shot_image = pygame.image.load("shot.png").convert_alpha()
+user_image = pygame.image.load("x_sprite.png").convert()
+user_shot_image = pygame.image.load("shot_v3.png").convert() #_alpha()
+elemental_image = pygame.image.load("elem_sprite.png").convert()#_alpha()
 
 #initiate length travelled
 mov_increment = 0
@@ -38,8 +34,19 @@ mov_increment = 0
 #set clock
 clock = pygame.time.Clock()
 
-def round_base_5(x, base=5):
-    return int(base * round(float(x)/base))
+def base_round(*x, base=5):
+
+    if len(x) > 1:
+        return tuple(int(base * round(float(_)/base)) for _ in x)
+    elif len(x) <= 1:
+        return int(base * round(float(*x)/base))
+
+def base_round_floor(*x, base=5):
+
+    if len(x) > 1:
+        return tuple(int(base * math.floor(float(_)/base)) for _ in x)
+    elif len(x) <= 1:
+        return int(base * math.floor(float(*x)/base))
 
 class Obstacle(pygame.sprite.Sprite):
 
@@ -81,113 +88,144 @@ class Obstacle(pygame.sprite.Sprite):
 
 class ElementalEntities(pygame.sprite.Sprite):
 
-    sprite_id = 0
+    # organizes enemy entity details
+    init_sprite_id = 0
     elemental_entity_details_array = dict()
     path_threads_list = []
+
+    mov_rotations = {(5, 5) : 135, (5, 0) : 90, (5, -5) : 45, (0, 5) : 180,
+                         (0, -5) : 0, (-5, 5) : 225, (-5, 0) : 270, (-5, -5) : 315}
 
     def __init__(self, init_coord_x=100, init_coord_y=100, init_color=(100,100,100)):
 
         pygame.sprite.Sprite.__init__(self)
 
-        self.sprite_id = ElementalEntities.sprite_id
-        self.path_generator = a_star.PathGenerator((0, 0), (width, height), self.sprite_id)
-        self.path = ()
-        self.frames_past = 0
+        # rendering-related data
+        #self.image = pygame.Surface((3,3)).convert_alpha()
+        self.image_original = elemental_image
+        self.image_original.set_colorkey((255,255,255))
+        self.image = pygame.transform.rotate(self.image_original, 0) ########!!!!#########
+        self.image.set_colorkey((255,255,255))
+        #self.image.fill((init_color[0],init_color[1],init_color[2]))
 
-        self.image = pygame.Surface((3,3)).convert_alpha()
+        # spatial data
         self.rect = self.image.get_rect()
         self.rect.centerx = init_coord_x
         self.rect.centery = init_coord_y
-        #self.current_user_location = User.get_player_location()
-        self.image.fill((init_color[0],init_color[1],init_color[2]))
 
+        # pathfinding-related objects
+        self.sprite_id = ElementalEntities.init_sprite_id
+        self.path_generator = a_star.PathGenerator((0, 0), (width, height), self.sprite_id)
         self.path_generator_thread = threading.Thread()
+        self.path = iter(())
+        self.frames_past = 0
 
         ElementalEntities.elemental_entity_details_array.update(
-            {self.sprite_id : {'path' : iter(()), 'current_location' : (self.rect.centerx, self.rect.centery)}}
+            {self.sprite_id : {'path' : (), 'current_location' : (self.rect.centerx, self.rect.centery)}}
         )
 
-        ElementalEntities.sprite_id += 1
+        ElementalEntities.init_sprite_id += 1
         all_elementals.add(self)
-        self.last_loc_player = User.get_player_location()
-        self.current_loc_player = self.last_loc_player
 
     def update(self):
 
-        self.current_loc_player = User.get_player_location()
+        # self.frames_past represents the amount of iterations done over the latest
+        # player-targeted path that's been generated for the elemental entity
 
         next_x = 0
         next_y = 0
 
-        # if the path is being calculated, do nothing
+        # if the path is being calculated, elemental should be idle (update() does nothing)
         if self.path_generator_thread.isAlive():
 
-            #print('doing nothing lalala')
+            #print('path gen alive')
             return
 
-        # if the path calc thread has started and is done
+        # if the path calc is done and frames_past has been reset, build path iterator
         elif self.frames_past == -1 and not self.path_generator_thread.isAlive():
 
+            #print('building path iterator')
             self.path = iter(ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'])
-            #print('new path created')
             self.frames_past = 0
+            #print('path len: ', len(ElementalEntities.elemental_entity_details_array[self.sprite_id]['path']))
 
-        # the player is not near and the path calc is done and has yielded an empty path, and 3*fps has past
+        # check if
+        # 1. the player is not near the elemental entity
+        # and
+        # 2. if the path calculation thread has expired
+        # and
+        # 3. frames_past has surpassed the path iteration limit and most recent path calc has yielded an empty path
         elif not self.player_in_vicinity() and (self.frames_past > 3*fps-1 or not self.path) \
                 and not self.path_generator_thread.isAlive():
 
-            #kkprint('no calc :(')
+            #print(self.sprite_id, 'ladida')
             ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'] = ()
             self.path = iter(())
 
+        # check if
+        # 1. player is near elemental entity
+        # and
+        # 2. path-node iterations have surpassed the defined limit
+        # and
+        # 3. there is no path calc thread running
         elif self.player_in_vicinity() and (self.frames_past > 3*fps-1 or not self.path) \
                 and not self.path_generator_thread.isAlive():
 
-            #print('calcs...')
+            if self.last_loc_player == User.get_player_location():
+
+                return
+
             self.path_generator_thread = threading.Thread(target=self.path_generator.aStar
                                                           , name=(str(self.sprite_id) + '_path_gen_thread')
                                                           , args=((self.rect.centerx, self.rect.centery)
-                                                                  , (round_base_5(User.get_player_location()[0]),
-                                                                  round_base_5(User.get_player_location()[1]))
+                                                                  , (base_round(*User.get_player_location()))
                                                                   , Obstacle.obstacles
                                                                   , True
                                                                   , ElementalEntities.elemental_entity_details_array
                                                                   )
                                                           )
-            print(User.get_player_location(), (self.rect.centerx, self.rect.centery))
+            #print(self.sprite_id, User.get_player_location(), (self.rect.centerx, self.rect.centery))
             self.path_generator_thread.start()
+
+            # reset path-node iteration
             self.frames_past = -1
-            #print('calc path')
-            # print('sprite ' + str(self.sprite_id) + ' is alive - ' + str(self.path_generator_thread.isAlive()))
+
 
         elif self.player_in_vicinity() and self.frames_past < 3*fps:
 
-            #print('frames past lol')
             try:
 
                 next_x, next_y = tuple(map(operator.sub, next(self.path), (self.rect.centerx, self.rect.centery)))
-                #print('move')
                 self.frames_past += 1
 
             except StopIteration:
 
-                #print('no move')
                 ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'] = ()
                 self.path = iter(())
                 self.frames_past += fps
+                #print('failing')
 
         else:
 
-            next_x = 0 #ElementalEntities.random_movement_generator()
-            next_y = 0 #ElementalEntities.random_movement_generator()
-            self.path = iter(()) #iter(())
+            next_x = base_round(ElementalEntities.random_movement_generator())
+            next_y = base_round(ElementalEntities.random_movement_generator())
+            self.path = iter(())
             self.frames_past += 1
-            #print('nothing')
 
         self.rect.centerx += next_x
         self.rect.centery += next_y
 
+        # if entity randomly walks into obstacle as a result of randomly generated movement, return to previous position
+        if (self.rect.centerx, self.rect.centery) in Obstacle.obstacles:
+
+            self.rect.centerx -= next_x
+            self.rect.centery -= next_y
+
         self.check_bounds()
+
+        if (next_x, next_y) != (0,0):
+
+            self.rot_center(- ElementalEntities.mov_rotations[(next_x, next_y)])
 
         ElementalEntities.elemental_entity_details_array[self.sprite_id]['current_location'] = (self.rect.centerx, self.rect.centery)
 
@@ -214,18 +252,23 @@ class ElementalEntities(pygame.sprite.Sprite):
 
     def check_bounds(self):
 
-        if self.rect.right > width:
-            self.rect.right = width
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.bottom > height:
-            self.rect.bottom = height
-        if self.rect.top < 0:
-            self.rect.top = 0
+        if self.rect.centerx > width-5:
+            self.rect.centerx = width-5
+        if self.rect.centerx < 5:
+            self.rect.centerx = 5
+        if self.rect.centery > height-5:
+            self.rect.centery = height-5
+        if self.rect.centery < 5:
+            self.rect.centeryk = 5
 
     @staticmethod
     def random_movement_generator():
-        return randint(-1, 1)
+        return randint(-5, 5)
+
+    def rot_center(self, angle):
+        """rotate an image while keeping its center"""
+        self.image = pygame.transform.rotate(self.image_original, angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
 
 class UserShot(pygame.sprite.Sprite):
 
@@ -235,10 +278,11 @@ class UserShot(pygame.sprite.Sprite):
         self.image_original = user_shot_image
         self.image_original.set_colorkey((255,255,255))
         self.image = pygame.transform.rotate(self.image_original, user_angle)
+        #self.image.set_colorkey((255,255,255))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
-        self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*30
-        self.rect.centery = user_centery_coordinate - math.sin(math.radians(user_angle))*30
+        self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*15
+        self.rect.centery = user_centery_coordinate - math.sin(math.radians(user_angle))*15
         self.shot_speed_value = shot_speed_value
         self.speedx = round(self.shot_speed_value * math.cos(math.radians(user_angle))*30, 4)
         self.speedy = - round(self.shot_speed_value * math.sin(math.radians(user_angle))*30, 4)
@@ -248,7 +292,6 @@ class UserShot(pygame.sprite.Sprite):
 
         self.rect.x += self.speedx
         self.rect.y += self.speedy
-        #print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
 
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -274,11 +317,11 @@ class User(pygame.sprite.Sprite):
         self.rect.bottom = height - 30
         self.speedx = 0
         self.speedy = 0
-        self.angle = 0
+        self.angle = self.prev_angle = 0
         self.mask = pygame.mask.from_surface(self.image)
 
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
-
+        self.rotate_signal = 0
         #-return to this
         #####self.outline = self.mask.outline()
 
@@ -286,72 +329,120 @@ class User(pygame.sprite.Sprite):
 
         self.speedx = 0
         self.speedy = 0
+        self.prev_rect_x = self.rect.x
+        self.prev_rect_y = self.rect.y
 
         pressed_keystate = pygame.key.get_pressed()
         keyup_keystate = pygame.KEYUP
         keydown_keystate = pygame.KEYDOWN
 
         if pressed_keystate[pygame.K_a]:
-
             self.speedx = -10
-            #print("a pressed, x = " + str(self.rect.x))
 
         if pressed_keystate[pygame.K_d]:
-            #print("d pressed, x = " + str(self.rect.x))
             self.speedx = 10
 
         if pressed_keystate[pygame.K_s]:
-
             self.speedy = 10
-            #print("w pressed, y = " + str(self.rect.y))
 
         if pressed_keystate[pygame.K_w]:
-            #print("s pressed, y = " + str(self.rect.y))
             self.speedy = -10
-
-        if pressed_keystate[pygame.K_j]:
-
-            self.angle = (self.angle + 5) % 360
-            self.rot_center(self.angle)
-            #print("q pressed, angle = " + str(self.angle))
-
-        if pressed_keystate[pygame.K_l]:
-
-            self.angle = (self.angle - 5) % 360
-            self.rot_center(self.angle)
-            #print("q pressed, angle = " + str(self.angle))
 
         if event.type == keydown_keystate:
             if event.key == pygame.K_k:
                 self.shot_initialize_time = pygame.time.get_ticks()
                 empty_event = pygame.event.Event(pygame.USEREVENT)
                 pygame.event.post(empty_event)
-                #print("init time: " + str(self.shot_initialize_time))
+
+            if event.key == pygame.K_j and self.rotate_signal==-1:
+                self.prev_angle = self.angle
+                self.angle = (self.angle + 30) % 360
+                self.rot_center(self.angle)
+
+                self.rotate_signal = 0
+                self.mask = pygame.mask.from_surface(self.image)
+                self.outline = self.mask.outline()
+                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+
+                if self.adjusted_outline & Obstacle.obstacles:
+
+                    print('yus')
+                    self.angle = self.prev_angle
+                    self.rot_center(self.angle)
+
+                self.rotate_signal = 0
+                self.mask = pygame.mask.from_surface(self.image)
+                self.outline = self.mask.outline()
+                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+
+            if event.key == pygame.K_l and self.rotate_signal==1:
+                self.prev_angle = self.angle
+                self.angle = (self.angle - 30) % 360
+                self.rot_center(self.angle)
+
+                self.rotate_signal = 0
+                self.mask = pygame.mask.from_surface(self.image)
+                self.outline = self.mask.outline()
+                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+
+                if self.adjusted_outline & Obstacle.obstacles:
+                    print('yus')
+                    self.angle = self.prev_angle
+                    self.rot_center(self.angle)#-self.prev_angle)
+
+                self.rotate_signal = 0
+                self.mask = pygame.mask.from_surface(self.image)
+                self.outline = self.mask.outline()
+                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
 
         if event.type == keyup_keystate:
             if event.key == pygame.K_k:
                 time_delta = round(0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000, 4)
                 self.shot_speed_value = min(time_delta, 3)
-                #print("get ticks: " + str(pygame.time.get_ticks()/1000) + ", init time:  " + str(self.shot_initialize_time/1000))
                 UserShot(self.rect.centerx, self.rect.centery, self.angle, self.shot_speed_value)
                 empty_event = pygame.event.Event(pygame.USEREVENT)
                 pygame.event.post(empty_event)
-                #print("speed: " + str(self.shot_speed_value))
 
+            if event.key == pygame.K_l:
+                self.rotate_signal = 1
+            if event.key == pygame.K_j:
+                self.rotate_signal = -1
 
         self.rect.x += self.speedx
         self.rect.y += self.speedy
+        self.rect.centerx = base_round_floor(self.rect.centerx)
+        self.rect.centery = base_round_floor(self.rect.centery)
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.outline = self.mask.outline()
+        self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
 
         if self.rect.right > width:
             self.rect.right = width
+            self.rect.centerx = base_round_floor(self.rect.centerx)
+
         if self.rect.left < 0:
             self.rect.left = 0
+            self.rect.centerx = base_round(self.rect.centerx)
+            if self.rect.centerx % 5 == 0 and not self.rect.centerx % 10 == 0:
+                self.rect.centerx +=5
+
         if self.rect.bottom > height:
             self.rect.bottom = height
+            self.rect.centery = base_round_floor(self.rect.centery)
+            if self.rect.centery % 5 == 0 and not self.rect.centery % 10 == 0:
+                self.rect.centery -= 5
+
         if self.rect.top < 0:
             self.rect.top = 0
+            self.rect.centery = base_round((self.rect.bottom-self.rect.top)/2)
+            if self.rect.centery % 5 == 0 and not self.rect.centery % 10 == 0:
+                self.rect.centery += 5
 
-        self.rect.centerx, self.rect.centery = round_base_5(self.rect.centerx), round_base_5(self.rect.centery)
+        if self.adjusted_outline & Obstacle.obstacles:
+
+            self.rect.x -= self.speedx
+            self.rect.y -= self.speedy
 
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
 
@@ -370,12 +461,25 @@ class User(pygame.sprite.Sprite):
 
         return User.rect_centerx, User.rect_centery
 
+class UserCoordsText():
+
+    def __init__(self):
+
+        self.myfont = pygame.font.Font(None, 15)
+        self.label = self.myfont.render(str(User.get_player_location()), 1, (0,0,0))
+
+    def update(self):
+
+        self.label = self.myfont.render(str(User.get_player_location()), 1, (0,0,0))
+
+
 all_sprites = pygame.sprite.Group()
 all_bullets = pygame.sprite.Group()
 all_elementals = pygame.sprite.Group()
 all_wall_sprites = pygame.sprite.Group()
 
 user1 = User()
+userCoordsDisplay = UserCoordsText()
 
 e_x, e_y = 150, 100
 el1 = ElementalEntities(e_x, e_y+10,(25,125,225))
@@ -419,6 +523,7 @@ while True:
     all_sprites.update()
     all_bullets.update()
     all_elementals.update()
+    userCoordsDisplay.update()
     #print(ElementalEntities.elemental_entity_details_array)
 
     # pid = os.getpid()
@@ -433,9 +538,10 @@ while True:
     #     print("BAM")
 
     screen.blit(background_image, [0,0])
+    screen.blit(userCoordsDisplay.label, [940,480])
     all_wall_sprites.draw(screen)
-    all_sprites.draw(screen)
     all_bullets.draw(screen)
+    all_sprites.draw(screen)
     all_elementals.draw(screen)
 
     pygame.display.flip()
