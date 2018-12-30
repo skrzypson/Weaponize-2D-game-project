@@ -259,7 +259,7 @@ class ElementalEntities(pygame.sprite.Sprite):
         if self.rect.centery > height-5:
             self.rect.centery = height-5
         if self.rect.centery < 5:
-            self.rect.centeryk = 5
+            self.rect.centery = 5
 
     @staticmethod
     def random_movement_generator():
