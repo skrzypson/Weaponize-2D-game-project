@@ -9,7 +9,7 @@ from collections import deque
 
 #unchangeable dimensions of window
 size = width, height = 1000, 500
-fps = 30
+fps = 60
 
 #initiate screen
 pygame.init()
@@ -20,11 +20,12 @@ pygame.display.set_caption("Weaponize")
 
 #set background
 #background_image = pygame.image.load("img.png").convert()
-background_image = pygame.Surface((width, height))
-background_image.fill((250,255,170))
+background_image = pygame.image.load("grass_backgr_8p_dark.png").convert()
+# background_image = pygame.Surface((width, height))
+# background_image.fill((250,255,170))
 
 #sprite images
-user_image = pygame.image.load("x_sprite.png").convert()
+user_image = pygame.image.load("user4.png").convert()
 user_shot_image = pygame.image.load("shot_v3.png").convert() #_alpha()
 elemental_image = pygame.image.load("elem_sprite.png").convert()#_alpha()
 
@@ -56,9 +57,10 @@ class Obstacle(pygame.sprite.Sprite):
 
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((abs(top_left_corner[0] - bottom_right_corner[0])
-                                     , abs(top_left_corner[1] - bottom_right_corner[1]))).convert_alpha()
+                                     , abs(top_left_corner[1] - bottom_right_corner[1]))).convert()
 
-        self.image.fill((50,200,50))
+        self.image.fill((0,0,0))
+        self.image.set_alpha(150)
         self.rect = self.image.get_rect()
         self.rect.topleft = top_left_corner
 
@@ -66,11 +68,13 @@ class Obstacle(pygame.sprite.Sprite):
         for _ in range(1,5):
 
             self.temp_surf = pygame.Surface((abs(top_left_corner[0] - bottom_right_corner[0]) - 2*_
-                                     , abs(top_left_corner[1] - bottom_right_corner[1]) - 2*_)).convert_alpha()
+                                    , abs(top_left_corner[1] - bottom_right_corner[1]) - 2*_)
+                                    ).convert_alpha()
 
             self.temp_mask = pygame.mask.from_surface(self.temp_surf)
             self.temp_outline = self.temp_mask.outline()
-            self.temp_adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.temp_outline}
+            self.temp_adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft))
+                                          for node in self.temp_outline}
             self.inner_outline.update(self.temp_adjusted_outline)
 
         del self.temp_surf, self.temp_outline, self.temp_mask, self.temp_adjusted_outline
@@ -93,10 +97,10 @@ class ElementalEntities(pygame.sprite.Sprite):
     elemental_entity_details_array = dict()
     path_threads_list = []
 
-    mov_rotations = {(5, 5) : 135, (5, 0) : 90, (5, -5) : 45, (0, 5) : 180,
-                         (0, -5) : 0, (-5, 5) : 225, (-5, 0) : 270, (-5, -5) : 315}
+    mov_rotations = {(5, 5): 135, (5, 0): 90, (5, -5): 45, (0, 5): 180,
+                     (0, -5): 0, (-5, 5): 225, (-5, 0): 270, (-5, -5): 315}
 
-    def __init__(self, init_coord_x=100, init_coord_y=100, init_color=(100,100,100)):
+    def __init__(self, init_coord_x=100, init_coord_y=100):
 
         pygame.sprite.Sprite.__init__(self)
 
@@ -104,9 +108,8 @@ class ElementalEntities(pygame.sprite.Sprite):
         #self.image = pygame.Surface((3,3)).convert_alpha()
         self.image_original = elemental_image
         self.image_original.set_colorkey((255,255,255))
-        self.image = pygame.transform.rotate(self.image_original, 0) ########!!!!#########
+        self.image = pygame.transform.rotate(self.image_original, 0)
         self.image.set_colorkey((255,255,255))
-        #self.image.fill((init_color[0],init_color[1],init_color[2]))
 
         # spatial data
         self.rect = self.image.get_rect()
@@ -121,7 +124,7 @@ class ElementalEntities(pygame.sprite.Sprite):
         self.frames_past = 0
 
         ElementalEntities.elemental_entity_details_array.update(
-            {self.sprite_id : {'path' : (), 'current_location' : (self.rect.centerx, self.rect.centery)}}
+            {self.sprite_id: {'path': (), 'current_location': (self.rect.centerx, self.rect.centery)}}
         )
 
         ElementalEntities.init_sprite_id += 1
@@ -138,16 +141,13 @@ class ElementalEntities(pygame.sprite.Sprite):
         # if the path is being calculated, elemental should be idle (update() does nothing)
         if self.path_generator_thread.isAlive():
 
-            #print('path gen alive')
             return
 
         # if the path calc is done and frames_past has been reset, build path iterator
         elif self.frames_past == -1 and not self.path_generator_thread.isAlive():
 
-            #print('building path iterator')
             self.path = iter(ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'])
             self.frames_past = 0
-            #print('path len: ', len(ElementalEntities.elemental_entity_details_array[self.sprite_id]['path']))
 
         # check if
         # 1. the player is not near the elemental entity
@@ -155,10 +155,9 @@ class ElementalEntities(pygame.sprite.Sprite):
         # 2. if the path calculation thread has expired
         # and
         # 3. frames_past has surpassed the path iteration limit and most recent path calc has yielded an empty path
-        elif not self.player_in_vicinity() and (self.frames_past > 3*fps-1 or not self.path) \
+        elif not self.player_in_vicinity() and (self.frames_past > 3 * fps-1 or not self.path) \
                 and not self.path_generator_thread.isAlive():
 
-            #print(self.sprite_id, 'ladida')
             ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'] = ()
             self.path = iter(())
 
@@ -168,12 +167,13 @@ class ElementalEntities(pygame.sprite.Sprite):
         # 2. path-node iterations have surpassed the defined limit
         # and
         # 3. there is no path calc thread running
-        elif self.player_in_vicinity() and (self.frames_past > 3*fps-1 or not self.path) \
+        elif self.player_in_vicinity() and (self.frames_past > 3 * fps-1 or not self.path) \
                 and not self.path_generator_thread.isAlive():
 
-            if self.last_loc_player == User.get_player_location():
-
-                return
+            # if self.last_loc_player == User.get_player_location():
+            #
+            #     print('nanana')
+            #     return
 
             self.path_generator_thread = threading.Thread(target=self.path_generator.aStar
                                                           , name=(str(self.sprite_id) + '_path_gen_thread')
@@ -184,14 +184,13 @@ class ElementalEntities(pygame.sprite.Sprite):
                                                                   , ElementalEntities.elemental_entity_details_array
                                                                   )
                                                           )
-            #print(self.sprite_id, User.get_player_location(), (self.rect.centerx, self.rect.centery))
+
             self.path_generator_thread.start()
 
             # reset path-node iteration
             self.frames_past = -1
 
-
-        elif self.player_in_vicinity() and self.frames_past < 3*fps:
+        elif self.player_in_vicinity() and self.frames_past < 3 * fps:
 
             try:
 
@@ -203,12 +202,14 @@ class ElementalEntities(pygame.sprite.Sprite):
                 ElementalEntities.elemental_entity_details_array[self.sprite_id]['path'] = ()
                 self.path = iter(())
                 self.frames_past += fps
-                #print('failing')
 
         else:
 
-            next_x = base_round(ElementalEntities.random_movement_generator())
-            next_y = base_round(ElementalEntities.random_movement_generator())
+            if self.frames_past % 3 == 0:
+
+                next_x = base_round(ElementalEntities.random_movement_generator())
+                next_y = base_round(ElementalEntities.random_movement_generator())
+
             self.path = iter(())
             self.frames_past += 1
 
@@ -278,7 +279,6 @@ class UserShot(pygame.sprite.Sprite):
         self.image_original = user_shot_image
         self.image_original.set_colorkey((255,255,255))
         self.image = pygame.transform.rotate(self.image_original, user_angle)
-        #self.image.set_colorkey((255,255,255))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*15
@@ -296,10 +296,10 @@ class UserShot(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
         if self.rect.centerx > width or self.rect.centerx < 0 or self.rect.centery > height or self.rect.centery < 0:
-            #print("shot x,y: " + str(self.rect.centerx) + "," + str(self.rect.centery))
             all_bullets.remove(self)
             self = None
             print("shot is dead")
+
 
 class User(pygame.sprite.Sprite):
 
@@ -317,13 +317,11 @@ class User(pygame.sprite.Sprite):
         self.rect.bottom = height - 30
         self.speedx = 0
         self.speedy = 0
-        self.angle = self.prev_angle = 0
         self.mask = pygame.mask.from_surface(self.image)
 
+        User.angle = self.angle = self.prev_angle = 0
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
         self.rotate_signal = 0
-        #-return to this
-        #####self.outline = self.mask.outline()
 
     def update(self):
 
@@ -337,85 +335,73 @@ class User(pygame.sprite.Sprite):
         keydown_keystate = pygame.KEYDOWN
 
         if pressed_keystate[pygame.K_a]:
-            self.speedx = -10
+            self.speedx = -5
 
         if pressed_keystate[pygame.K_d]:
-            self.speedx = 10
+            self.speedx = 5
 
         if pressed_keystate[pygame.K_s]:
-            self.speedy = 10
+            self.speedy = 5
 
         if pressed_keystate[pygame.K_w]:
-            self.speedy = -10
+            self.speedy = -5
 
         if event.type == keydown_keystate:
+
             if event.key == pygame.K_k:
                 self.shot_initialize_time = pygame.time.get_ticks()
                 empty_event = pygame.event.Event(pygame.USEREVENT)
                 pygame.event.post(empty_event)
 
-            if event.key == pygame.K_j and self.rotate_signal==-1:
-                self.prev_angle = self.angle
-                self.angle = (self.angle + 30) % 360
-                self.rot_center(self.angle)
+            if event.key == pygame.K_l and self.rotate_signal != 1:
+                self.rotate_signal = 1
 
-                self.rotate_signal = 0
-                self.mask = pygame.mask.from_surface(self.image)
-                self.outline = self.mask.outline()
-                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
-
-                if self.adjusted_outline & Obstacle.obstacles:
-
-                    print('yus')
-                    self.angle = self.prev_angle
-                    self.rot_center(self.angle)
-
-                self.rotate_signal = 0
-                self.mask = pygame.mask.from_surface(self.image)
-                self.outline = self.mask.outline()
-                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
-
-            if event.key == pygame.K_l and self.rotate_signal==1:
-                self.prev_angle = self.angle
-                self.angle = (self.angle - 30) % 360
-                self.rot_center(self.angle)
-
-                self.rotate_signal = 0
-                self.mask = pygame.mask.from_surface(self.image)
-                self.outline = self.mask.outline()
-                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
-
-                if self.adjusted_outline & Obstacle.obstacles:
-                    print('yus')
-                    self.angle = self.prev_angle
-                    self.rot_center(self.angle)#-self.prev_angle)
-
-                self.rotate_signal = 0
-                self.mask = pygame.mask.from_surface(self.image)
-                self.outline = self.mask.outline()
-                self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+            if event.key == pygame.K_j and self.rotate_signal != -1:
+                self.rotate_signal = -1
 
         if event.type == keyup_keystate:
             if event.key == pygame.K_k:
+
                 time_delta = round(0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000, 4)
                 self.shot_speed_value = min(time_delta, 3)
                 UserShot(self.rect.centerx, self.rect.centery, self.angle, self.shot_speed_value)
                 empty_event = pygame.event.Event(pygame.USEREVENT)
                 pygame.event.post(empty_event)
 
-            if event.key == pygame.K_l:
-                self.rotate_signal = 1
-            if event.key == pygame.K_j:
-                self.rotate_signal = -1
+            if event.key == pygame.K_j and self.rotate_signal == -1:
+                self.prev_angle = self.angle
+                self.angle = (self.angle + 30) % 360
+                self.rot_center(self.angle)
+
+                self.rotate_signal = 0
+                self.get_players_adj_outline()
+
+                if self.adjusted_outline & Obstacle.obstacles:
+
+                    self.angle = self.prev_angle
+                    self.rot_center(self.angle)
+                    self.get_players_adj_outline()
+
+            if event.key == pygame.K_l and self.rotate_signal == 1:
+                self.prev_angle = self.angle
+                self.angle = (self.angle - 30) % 360
+                self.rot_center(self.angle)
+
+                self.rotate_signal = 0
+                self.get_players_adj_outline()
+
+                if self.adjusted_outline & Obstacle.obstacles:
+                    print('yus')
+                    self.angle = self.prev_angle
+                    self.rot_center(self.angle)
+                    self.get_players_adj_outline
 
         self.rect.x += self.speedx
         self.rect.y += self.speedy
         self.rect.centerx = base_round_floor(self.rect.centerx)
         self.rect.centery = base_round_floor(self.rect.centery)
 
-        self.mask = pygame.mask.from_surface(self.image)
-        self.outline = self.mask.outline()
-        self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+        self.get_players_adj_outline()
 
         if self.rect.right > width:
             self.rect.right = width
@@ -445,73 +431,87 @@ class User(pygame.sprite.Sprite):
             self.rect.y -= self.speedy
 
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
-
-        # -return to this
-        #### print(self.outline)
+        User.angle = self.angle
 
     def rot_center(self, angle):
         """rotate an image while keeping its center"""
         self.image = pygame.transform.rotate(self.image_original, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
-        # -return to this
-        ####self.mask = pygame.mask.from_surface(self.image)
 
     @staticmethod
     def get_player_location() -> Tuple[int, int]:
 
         return User.rect_centerx, User.rect_centery
 
+    @staticmethod
+    def get_player_angle() -> float:
+
+        return User.angle
+
+    def get_players_adj_outline(self) -> None:
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.outline = self.mask.outline()
+        self.adjusted_outline = {tuple(map(operator.add, node, self.rect.topleft)) for node in self.outline}
+
 class UserCoordsText():
 
     def __init__(self):
 
         self.myfont = pygame.font.Font(None, 15)
-        self.label = self.myfont.render(str(User.get_player_location()), 1, (0,0,0))
+        self.label = self.myfont.render('coords:  ' + str(User.get_player_location())
+                                        + ',  angle:  ' + str(User.angle), 1, (0,0,0))
 
     def update(self):
 
-        self.label = self.myfont.render(str(User.get_player_location()), 1, (0,0,0))
+        self.label = self.myfont.render('coords:  ' + str(User.get_player_location())
+                                        + ',  angle:  ' + str(User.angle), 1, (0,0,0))
 
-
+''' generate sprite groups'''
 all_sprites = pygame.sprite.Group()
 all_bullets = pygame.sprite.Group()
 all_elementals = pygame.sprite.Group()
 all_wall_sprites = pygame.sprite.Group()
 
+''' instantiate player sprite and add to all_sprites '''
 user1 = User()
-userCoordsDisplay = UserCoordsText()
-
-e_x, e_y = 150, 100
-el1 = ElementalEntities(e_x, e_y+10,(25,125,225))
-el3 = ElementalEntities(e_x, e_y+20,(25,125,225))
-el4 = ElementalEntities(e_x, e_y+30,(25,125,225))
-el5 = ElementalEntities(e_x, e_y+40,(25,125,225))
-el6 = ElementalEntities(e_x, e_y+50,(25,125,225))
-el7 = ElementalEntities(e_x, e_y+60,(25,125,225))
-el8 = ElementalEntities(e_x, e_y+70,(25,125,225))
-el9 = ElementalEntities(e_x, e_y+80,(25,125,225))
-el10 = ElementalEntities(e_x, e_y+90,(25,125,225))
-el11 = ElementalEntities(e_x, e_y+100,(25,125,225))
-el12 = ElementalEntities(e_x, e_y+110,(25,125,225))
-el13 = ElementalEntities(e_x, e_y+120,(25,125,225))
-el14 = ElementalEntities(e_x, e_y+130,(25,125,225))
-el15 = ElementalEntities(e_x+100, e_y+140,(25,125,225))
-el16 = ElementalEntities(e_x+100, e_y+150,(25,125,225))
-el17 = ElementalEntities(e_x+100, e_y+160,(25,125,225))
-el18 = ElementalEntities(e_x+100, e_y+170,(25,125,225))
-el19 = ElementalEntities(e_x+100, e_y+180,(25,125,225))
-el20 = ElementalEntities(e_x+100, e_y+190,(25,125,225))
-
 all_sprites.add(user1)#, el1, el2)
 
+''' instantiate text display '''
+userCoordsDisplay = UserCoordsText()
 
+''' generate multiple enemies - automatically added to all_elemental sprite group '''
+e_x, e_y = 150, 100
+el1 = ElementalEntities(e_x, e_y+10)
+el3 = ElementalEntities(e_x, e_y+20)
+el4 = ElementalEntities(e_x, e_y+30)
+el5 = ElementalEntities(e_x, e_y+40)
+el6 = ElementalEntities(e_x, e_y+50)
+el7 = ElementalEntities(e_x, e_y+60)
+el8 = ElementalEntities(e_x, e_y+70)
+el9 = ElementalEntities(e_x, e_y+80)
+el10 = ElementalEntities(e_x, e_y+90)
+el11 = ElementalEntities(e_x, e_y+100)
+el12 = ElementalEntities(e_x, e_y+110)
+el13 = ElementalEntities(e_x, e_y+120)
+el14 = ElementalEntities(e_x, e_y+130)
+el15 = ElementalEntities(e_x+100, e_y+140)
+el16 = ElementalEntities(e_x+100, e_y+150)
+el17 = ElementalEntities(e_x+100, e_y+160)
+el18 = ElementalEntities(e_x+100, e_y+170)
+el19 = ElementalEntities(e_x+100, e_y+180)
+el20 = ElementalEntities(e_x+100, e_y+190)
+
+''' create obstacles '''
 wall1 = Obstacle((350, 350), (370, 370))
 wall2 = Obstacle((200, 300), (250, 350))
 wall3 = Obstacle((600, 100), (620, 250))
+wall4 = Obstacle((310, 200), (550, 220))
 
-
+''' main loop'''
 while True:
 
+    ''' run with established frame rate per sec '''
     clock.tick(fps)
 
     for event in pygame.event.get():
@@ -520,28 +520,20 @@ while True:
             pygame.quit()
             sys.exit()
 
+    ''' update sprite groups and text display '''
     all_sprites.update()
     all_bullets.update()
     all_elementals.update()
     userCoordsDisplay.update()
-    #print(ElementalEntities.elemental_entity_details_array)
 
-    # pid = os.getpid()
-    # py = psutil.Process(pid)
-    # memoryUse = py.memory_info()[0]/2.**30  # memory use in GB...I think
-    # print('memory use:', memoryUse)
-
+    ''' on enemy and bullet collsion -> delete elemental '''
     hits = pygame.sprite.groupcollide(all_elementals, all_bullets, True, False, pygame.sprite.collide_mask)
-    #if pygame.sprite.spritecollide(user1, all_elementals, False, pygame.sprite.collide_mask):
-    #    print("fudge")
-    # if hits == True:
-    #     print("BAM")
 
-    screen.blit(background_image, [0,0])
-    screen.blit(userCoordsDisplay.label, [940,480])
+    ''' blit images on screen '''
+    screen.blit(background_image, [0, 0])
+    screen.blit(userCoordsDisplay.label, [835, 480])
     all_wall_sprites.draw(screen)
     all_bullets.draw(screen)
     all_sprites.draw(screen)
     all_elementals.draw(screen)
-
     pygame.display.flip()
