@@ -18,16 +18,27 @@ pygame.init()
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("Weaponize")
 
+# graphic files - locations
+graphics_loc = dict({"player_sprites" : "graphics/player_sprites/",
+                     "player_bullet_sprites" : "graphics/player_bullet_sprites/",
+                     "enemy_sprites" : "graphics/enemy_sprites/",
+                     "background_images" : "graphics/background_images/"})
+
+player_sprites_img = dict({0: "p_0", 1: "p_1", 1.1: "p_1.1", 1.2: "p_1.2", 2: "p_2", 2.1: "p_2.1"})
+player_bullet_sprites_img = dict({0: "p_s_0"})
+enemy_sprites_img = dict({0 : "el_0", 1: "el_1", 2: "el_2"})
+background_img = dict({0 : "grass_backgr_8p_grayscale", 1: "grass_backgr_8p_dark"})
+
 #set background
-#background_image = pygame.image.load("img.png").convert()
-background_image = pygame.image.load("grass_backgr_8p_dark.png").convert()
-# background_image = pygame.Surface((width, height))
-# background_image.fill((250,255,170))
+background_image = pygame.image.load(graphics_loc["background_images"] + background_img[0] + ".png").convert()
 
 #sprite images
-user_image = pygame.image.load("user4.png").convert()
-user_shot_image = pygame.image.load("shot_v3.png").convert() #_alpha()
-elemental_image = pygame.image.load("elem_sprite.png").convert()#_alpha()
+user_image = pygame.image.load(graphics_loc["player_sprites"]
+                                    + player_sprites_img[2.1] + ".png").convert()
+user_shot_image = pygame.image.load(graphics_loc["player_bullet_sprites"]
+                                    + player_bullet_sprites_img[0] + ".png").convert() #_alpha()
+elemental_image = pygame.image.load(graphics_loc["enemy_sprites"] + enemy_sprites_img[2]
+                                    + ".png").convert()#_alpha()
 
 #initiate length travelled
 mov_increment = 0
