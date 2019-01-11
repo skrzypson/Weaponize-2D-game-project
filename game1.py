@@ -2,6 +2,7 @@ import sys, pygame
 import math
 import operator
 import threading
+import random
 from random import randint
 from typing import Tuple, Set
 from pathfinding import a_star
@@ -25,7 +26,7 @@ graphics_loc = dict({"player_sprites" : "graphics/player_sprites/",
                      "background_images" : "graphics/background_images/"})
 
 player_sprites_img = dict({0: "p_0", 1: "p_1", 1.1: "p_1.1", 1.2: "p_1.2", 2: "p_2", 2.1: "p_2.1"})
-player_bullet_sprites_img = dict({0: "p_s_0"})
+player_bullet_sprites_img = dict({0: "p_s_0", 1: "m_g_fire"})
 enemy_sprites_img = dict({0 : "el_0", 1: "el_1", 2: "el_2"})
 background_img = dict({0 : "grass_backgr_8p_grayscale", 1: "grass_backgr_8p_dark"})
 
@@ -37,6 +38,8 @@ user_image = pygame.image.load(graphics_loc["player_sprites"]
                                     + player_sprites_img[2.1] + ".png").convert()
 user_shot_image = pygame.image.load(graphics_loc["player_bullet_sprites"]
                                     + player_bullet_sprites_img[0] + ".png").convert() #_alpha()
+machine_gun_fire_image = pygame.image.load(graphics_loc["player_bullet_sprites"]
+                                    + player_bullet_sprites_img[1] + ".png").convert()
 elemental_image = pygame.image.load(graphics_loc["enemy_sprites"] + enemy_sprites_img[2]
                                     + ".png").convert()#_alpha()
 
@@ -247,7 +250,7 @@ class ElementalEntities(pygame.sprite.Sprite):
 
     def player_in_vicinity(self) -> bool:
 
-        if ElementalEntities.distBetween((self.rect.centerx, self.rect.centery), User.get_player_location()) < 200:
+        if ElementalEntities.distBetween((self.rect.centerx, self.rect.centery), User.get_player_location()) < 300:
 
             return True
 
@@ -311,6 +314,36 @@ class UserShot(pygame.sprite.Sprite):
             self = None
             print("shot is dead")
 
+class MachineGunFire(pygame.sprite.Sprite):
+
+    def __init__(self, user_centerx_coordinate, user_centery_coordinate, user_angle, offset):
+
+        pygame.sprite.Sprite.__init__(self)
+        self.image_original = machine_gun_fire_image
+        self.image_original.set_colorkey((255,255,255))
+        self.image = pygame.transform.rotate(self.image_original, user_angle)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = user_centerx_coordinate + math.cos(math.radians(user_angle))*1 \
+                            - (offset * math.cos(math.radians(90-user_angle)) + randint(0,3))
+        self.rect.centery = user_centery_coordinate - math.sin(math.radians(user_angle))*1 \
+                            - (offset * math.sin(math.radians(90-user_angle)) + randint(0,3))
+        self.shot_speed_value = 1 + random.uniform(0, 1)/10
+        self.speedx = round(self.shot_speed_value * math.cos(math.radians(user_angle))*30, 4)
+        self.speedy = - round(self.shot_speed_value * math.sin(math.radians(user_angle))*30, 4)
+        all_bullets.add(self)
+
+    def update(self):
+
+        self.rect.x += self.speedx
+        self.rect.y += self.speedy
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+        if self.rect.centerx > width or self.rect.centerx < 0 or self.rect.centery > height or self.rect.centery < 0:
+            all_bullets.remove(self)
+            self = None
+            print("shot is dead")
 
 class User(pygame.sprite.Sprite):
 
@@ -333,6 +366,9 @@ class User(pygame.sprite.Sprite):
         User.angle = self.angle = self.prev_angle = 0
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
         self.rotate_signal = 0
+        self.weapon_set = {0: user_shot_image, 1: machine_gun_fire_image}
+        self.weapon_chosen = 0
+        self.machine_gun_shooting = False
 
     def update(self):
 
@@ -359,6 +395,9 @@ class User(pygame.sprite.Sprite):
 
         if event.type == keydown_keystate:
 
+            if event.key == pygame.K_SPACE:
+                self.machine_gun_shooting = True
+
             if event.key == pygame.K_k:
                 self.shot_initialize_time = pygame.time.get_ticks()
                 empty_event = pygame.event.Event(pygame.USEREVENT)
@@ -371,6 +410,11 @@ class User(pygame.sprite.Sprite):
                 self.rotate_signal = -1
 
         if event.type == keyup_keystate:
+
+            if event.key == pygame.K_SPACE :
+
+                self.machine_gun_shooting = False
+
             if event.key == pygame.K_k:
 
                 time_delta = round(0.5 + pygame.time.get_ticks()/1000 - self.shot_initialize_time/1000, 4)
@@ -443,6 +487,10 @@ class User(pygame.sprite.Sprite):
 
         User.rect_centerx, User.rect_centery = self.rect.centerx, self.rect.centery
         User.angle = self.angle
+
+        if self.machine_gun_shooting:
+            MachineGunFire(self.rect.centerx, self.rect.centery, self.angle, 15)
+            MachineGunFire(self.rect.centerx, self.rect.centery, self.angle, -15)
 
     def rot_center(self, angle):
         """rotate an image while keeping its center"""
