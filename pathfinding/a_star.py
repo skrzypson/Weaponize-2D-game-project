@@ -32,8 +32,10 @@ class PathGenerator:
         self.bottom_right_coord = bottom_right_coord
         self.sprite_id = sprite_id
 
-    neighbors_increment = {(1, 0), (0, 1), (0, -1), (-1, 0)}
-    neighbors_increment_diag = {(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)}
+    # neighbors_increment = {(1, 0), (0, 1), (0, -1), (-1, 0)}
+    # neighbors_increment_diag = {(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)}
+    neighbors_increment = {(5, 0), (0, 5), (0, -5), (-5, 0)}
+    neighbors_increment_diag = {(5, 5), (5, 0), (5, -5), (0, 5), (0, -5), (-5, 5), (-5, 0), (-5, -5)}
 
     def drawPlane(self, _path, _obstacles={}):
 
@@ -72,14 +74,14 @@ class PathGenerator:
 
     def heuristicEstimate(self, _start_point: Tuple[int, int], _goal_point: Tuple[int, int]) -> float:
 
-        _h = round(abs(_goal_point[1] - _start_point[1]) + abs(_goal_point[0] - _start_point[0]))
+        _h = round(abs(_goal_point[1] - _start_point[1]) + abs(_goal_point[0] - _start_point[0]),2)
 
         return _h
 
     def neighborNodes(self, _node: Tuple[int, int], _top_left_coord: Tuple[int, int],
-                      _bottom_right_coord: Tuple[int, int], _wall_encountered=False) -> List[Tuple[int, int]]:
+                      _bottom_right_coord: Tuple[int, int], _wall_encountered=False) -> Set[Tuple[int, int]]:
 
-        _children = []
+        _children = set()
         
         if _wall_encountered:
             
@@ -100,7 +102,7 @@ class PathGenerator:
 
             else:
 
-                _children.append(_child)
+                _children.add(_child)
             
         return _children
 
@@ -169,7 +171,6 @@ class PathGenerator:
     def aStar(self, _start_node: Tuple[int, int], _goal_node: Tuple[int, int], _wall_nodes: Set[Tuple[int, int]],
               _is_iterable=False, result_array=None) -> Deque[Tuple[int, int]]:
 
-        start_time = time.time()
         path_not_found = True
         _wall_encountered = _start_node in _wall_nodes
         came_from = {}
@@ -179,15 +180,18 @@ class PathGenerator:
         f_score = {}
         g_score[_start_node] = 0
         f_score[_start_node] = g_score[_start_node] + self.heuristicEstimate(_start_node, _goal_node)
+        start_time = time.time()
+        current_time = start_time
         
-        while len(open_set) != 0 and path_not_found:
+        while open_set: # and path_not_found:
 
             current = self.getLowest(open_set, f_score)
+            current_time = time.time()
             
             if current == _goal_node:
 
                 path = self.reconstructPath(came_from, _goal_node)
-                path = self.diagonizePath(path)
+                #path = tuple(self.diagonizePath(path))
                 
                 if result_array != None:
 
@@ -195,17 +199,21 @@ class PathGenerator:
 
                 if _is_iterable:
 
-                    return iter(list(path))
+                    return iter(path)
 
                 elif not _is_iterable:
 
                     return path
 
+            if current_time - start_time > 1:
+
+                break
+
             open_set.remove(current)
             closed_set.add(current)
             neighbors = self.neighborNodes(current, self.top_left_coord, self.bottom_right_coord, _wall_encountered)
 
-            _wall_encountered = any(neighbor in _wall_nodes for neighbor in neighbors)
+            _wall_encountered = _wall_nodes & neighbors #any(neighbor in _wall_nodes for neighbor in neighbors)
 
             for neighbor in neighbors:
 
@@ -229,4 +237,4 @@ class PathGenerator:
                         
                         open_set.add(neighbor)
 
-        return 0
+        return set([()])
